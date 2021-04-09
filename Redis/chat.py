@@ -1,6 +1,8 @@
 import redis
 import sys
 
+# https://docs.python.org/3.5/howto/curses.html
+
 class Chat:
     GROUPS = 'GROUPS'
     USERS = 'users'
@@ -32,9 +34,11 @@ class User:
         self.chat = chat
 
         # Insert user into db
+        # Hash user info
         self.chat.r.hset("{}:{}".format(chat.USERS, uname), 'uname', uname)
         self.chat.r.hset("{}:{}".format(chat.USERS, uname), 'status', status)
-        self.chat.r.zadd(chat.GROUPS, { uname : 1.0 })
+        # Zset of sent messages per user(group)
+        self.chat.r.zadd(chat.GROUPS, { uname : 0.0 })
 
         # Enter pub/ sub and subscribe to own channel
         self.channel = chat.r.pubsub()
@@ -43,10 +47,21 @@ class User:
     def get_message(self):
         msg = self.channel.get_message()
         if msg:
-            return msg['data']
+            message = msg['data']
+
+            if message != None and message != 1:
+                self.chat.r.zincrby(chat.GROUPS, -1.0, self.uname)
+                return message.decode('utf-8')
+            else:
+                return ""
 
     def send_message(self, dst, msg):
-        return self.chat.r.publish(dst, "{}\n--------------------\n{}".format(msg, self.status))
+        # Increment the sent message count
+        self.chat.r.zincrby(chat.GROUPS, 1.0, dst)
+        return self.chat.r.publish(dst, "From {}: {}\n--------------------\n{}\n--------------------\n".format(self.uname, self.status, msg))
+
+    def received_messages(self):
+        return self.chat.r.zscore(chat.GROUPS, self.uname)
 
 
 if __name__ == '__main__':
@@ -66,13 +81,18 @@ if __name__ == '__main__':
         elif t[0] == 'get':
             while True:
                 message = user.get_message()
-                if message == 1 or message == None:
+                if message == None:
                     break;
-                print(message.decode('utf-8'))
+                else:
+                    print(message)
         elif t[0] == 'getgroups':
             groups = user.chat.get_groups()
             for group in groups:
                 print(group)
+        elif t[0] == 'received':
+            print("{} messages".format(user.received_messages()))
+        else:
+            print("send name message\nget\ngetgroups")
 
         
     
