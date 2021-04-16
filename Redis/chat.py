@@ -6,6 +6,8 @@ import sys
 class Chat:
     GROUPS = 'GROUPS'
     USERS = 'users'
+    ACTIVE_USERS = 'active'
+    MESSAGES = 'messages'
 
     def __init__(self, ip, port):
         self.r = redis.Redis(host=ip, port=port, db=0)
@@ -17,11 +19,11 @@ class Chat:
     def get(self, key):
         return self.r.get(key)
 
-    def get_groups(self):
+    def get_users(self):
         """
         Get all available groups to join.
         """
-        return self.r.zrange(chat.GROUPS, 0, -1)
+        return self.r.smembers(self.ACTIVE_USERS)
 
 class User:
     """
@@ -34,15 +36,22 @@ class User:
         self.chat = chat
 
         # Insert user into db
-        # Hash user info
+        # Hash user info        :: (HASH)
         self.chat.r.hset("{}:{}".format(chat.USERS, uname), 'uname', uname)
         self.chat.r.hset("{}:{}".format(chat.USERS, uname), 'status', status)
-        # Zset of sent messages per user(group)
+
+        # Zset of sent messages per user(group) :: (ZSET)
         self.chat.r.zadd(chat.GROUPS, { uname : 0.0 })
+
+        # Add user to active users :: (SET)
+        self.chat.r.sadd(chat.ACTIVE_USERS, uname)
 
         # Enter pub/ sub and subscribe to own channel
         self.channel = chat.r.pubsub()
         self.channel.subscribe(uname)
+
+    def __del__(self):
+        self.chat.r.srem(chat.ACTIVE_USERS, self.uname)
 
     def get_message(self):
         msg = self.channel.get_message()
@@ -50,8 +59,10 @@ class User:
             message = msg['data']
 
             if message != None and message != 1:
+                msg = message.decode('utf-8')
+                self.chat.r.lpush("{}:{}".format(chat.MESSAGES, self.uname), msg)
                 self.chat.r.zincrby(chat.GROUPS, -1.0, self.uname)
-                return message.decode('utf-8')
+                return msg
             else:
                 return ""
 
@@ -62,6 +73,9 @@ class User:
 
     def received_messages(self):
         return self.chat.r.zscore(chat.GROUPS, self.uname)
+
+    def get_history(self):
+        return self.chat.r.lrange("{}:{}".format(chat.MESSAGES, self.uname), 0, -1)
 
 
 if __name__ == '__main__':
@@ -85,14 +99,17 @@ if __name__ == '__main__':
                     break;
                 else:
                     print(message)
-        elif t[0] == 'getgroups':
-            groups = user.chat.get_groups()
+        elif t[0] == 'getusers':
+            groups = user.chat.get_users()
             for group in groups:
-                print(group)
+                print(group.decode('utf-8'))
         elif t[0] == 'received':
             print("{} messages".format(user.received_messages()))
+        elif t[0] == 'history':
+            for msg in user.get_history():
+                print(msg.decode('utf-8'))
         else:
-            print("send name message\nget\ngetgroups")
+            print("send name message - Send a message to a user with the given name\nget - get all new messages\ngetusers - show all active users\nreceived - show how many new messages have been received\nhistory - show all messages received")
 
         
     
