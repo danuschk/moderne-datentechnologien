@@ -8,6 +8,8 @@
 | Moritz Berger| 76265 |
 | Daniel Pawita| 70751 |
 
+> The source code can be found at: https://github.com/r4gus/moderne-datentechnologien/blob/master/Redis/chat.py
+
 ### Scenario
 
 We wanna build our own small messaging app using the pubsub paradigm
@@ -24,8 +26,6 @@ users can view who's currently active and start sending messages. When a user
 cloese the client `ctrl-C` the name of the user is removed from the set of
 active users. When a user receives a message it gets automatically appended
 to a (linked) `LIST` of received messages (history).
-
-... two more data types
 
 ### Getting started
 
@@ -121,7 +121,8 @@ class User:
 ```
 
 The user name gets automatically removed from the list of active users when the
-associated user object is destroyed.
+associated user object is destroyed. This happens when the user closes the
+running app.
 
 ```python
 def __del__(self):
@@ -151,7 +152,8 @@ def received_messages(self):
 
 To get the pending messages one can call the `get_message` function. It fetches
 the next message from the subsribed channel, decodes it into `utf-8`, decreases
-the unread message count by one and then returns the message.
+the unread message count by one and then returns the message. The method also
+appends the message to a list of already received messages.
 
 ```python
 def get_message(self):
@@ -160,8 +162,11 @@ def get_message(self):
         message = msg['data']
 
         if message != None and message != 1:
-            msg = message.decode('utf-8')
-            self.chat.r.lpush("{}:{}".format(chat.MESSAGES, self.uname), msg)
+            # Decode message
+            msg = message.decode('utf-8') 
+            # Append it to the list of read messages
+            self.chat.r.lpush("{}:{}".format(chat.MESSAGES, self.uname), msg) 
+            # Decrement count of unread messages
             self.chat.r.zincrby(chat.GROUPS, -1.0, self.uname)
             return msg
         else:
