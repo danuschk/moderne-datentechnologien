@@ -182,19 +182,43 @@ def get_history(self):
     return self.chat.r.lrange("{}:{}".format(chat.MESSAGES, self.uname), 0, -1)
 ```
 
+# Queries
 
+1. We want to retrieve all currently active users.
 
+```redis
+> SMEMBERS active
+1) "david"
+2) "moritz"
+```
 
+2. We want to check if member 'david' is in the database.
 
+```redis
+> EXISTS users:david
+(integer) 1
+```
 
+3. We want to get the number of 'moritz's received messages.
 
+```redis
+> ZSCORE GROUPS moritz
+"2"
+```
 
+4. We want all list of all members and their number of received messages.
 
+```redis
+> ZRANGE GROUPS 0 -1 withscores
+1) "david"
+2) "0"
+3) "moritz"
+4) "2"
+```
 
+5. We want to retrieve the current state of 'moritz'.
 
-
-
-
-
-
-
+```redis
+> HGET users:moritz status
+"Hello World"
+```
