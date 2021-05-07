@@ -46,7 +46,42 @@ insert into hotels (name, city, stars) values ('ibis Budget Stuttgart City Nord'
 
 #### 2. Erstelle Zimmer mit Preis, zugehörigem Hotel und ob es belegt ist
 
+```sql
+create table rooms (
+	nr int,
+	beds int,
+	price int,
+	available boolean,
+	features set<text>,
+	primary key (nr)
+	);
+	
+insert into 
+rooms (nr, beds, price, available, features)
+values (1, 1, 100, true, {'Vergoldeter Toilettensitz', 'Klimaanlage'});
+```
+
 #### 3. Erstelle Gäste mit Name und Anschrift
+
+```sql
+CREATE TABLE guests (
+	userid uuid,
+	joined timeuuid,
+	titel text,
+	vorname text,
+	nachname text,
+	geburtstag date,
+	PRIMARY KEY (userid, joined)	
+);
+
+insert into 
+guests (uuid, joined, vorname, nachname, geburtstag) 
+values (uuid(), now(), Moritz, Berger, '1998-07-24');
+
+insert into 
+guests (uuid, joined, titel, vorname, nachname) 
+values (uuid(), now, Prof. Dr, Christop, Heinlein);
+```
 
 #### 4. Erstelle Buchungen mit einer Referenz auf Hotel, den Gast und das Zimmer, sowie Übernachtungszeitraum
 
