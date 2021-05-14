@@ -1,4 +1,4 @@
-# Lecture Modern Data Technologies - Exercise 1 (Redis)
+# Lecture Modern Data Technologies - Exercise 2 (Cassandra)
 
 ### Group 6
 
@@ -27,6 +27,7 @@ Zuerst muss ein neuer Keyspace erzeugt werden.
 ```sql
 CREATE KEYSPACE ex2
 WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : '1'};
+USE ex2;
 ```
 
 Als nächstes muss die Hotel Column Family angelegt und einige Einträge
@@ -49,16 +50,19 @@ insert into hotels (name, city, stars) values ('ibis Budget Stuttgart City Nord'
 ```sql
 create table rooms (
 	nr int,
+    hotel, text,
 	beds int,
-	price int,
+	price float,
 	available boolean,
 	features set<text>,
-	primary key (nr)
-	);
+	primary key (nr, hotel, beds, price)
+);
+
+insert into rooms (nr, hotel, beds, price, available, features) values (1, 'ibis Styles Aalen', 1, 100.00, true, {'Vergolteter Toilettensitz', 'Klimaanlage'});
+insert into rooms (nr, hotel, beds, price, available, features) values (2, 'ibis Styles Aalen', 1, 49.99, true, {'Klimaanlage'});
+insert into rooms (nr, hotel, beds, price, available, features) values (3, 'ibis Styles Aalen', 1, 49.99, true, {'Klimaanlage'});
+insert into rooms (nr, hotel, beds, price, available, features) values (4, 'ibis Styles Aalen', 2, 88.97, true, {'Klimaanlage'});
 	
-insert into 
-rooms (nr, beds, price, available, features)
-values (1, 1, 100, true, {'Vergoldeter Toilettensitz', 'Klimaanlage'});
 ```
 
 #### 3. Erstelle Gäste mit Name und Anschrift
@@ -74,24 +78,37 @@ CREATE TABLE guests (
 	PRIMARY KEY (userid, joined)	
 );
 
-insert into 
-guests (uuid, joined, vorname, nachname, geburtstag) 
-values (uuid(), now(), Moritz, Berger, '1998-07-24');
+insert into guests (userid, joined, vorname, nachname, geburtstag) values (uuid(), now(), 'Moritz', 'Berger', '1998-07-24');
+insert into guests (userid, joined, title, vorname, nachname) values (uuid(), now(), 'Prof. Dr.', 'Christian', 'Heinlein');
 
-insert into 
-guests (uuid, joined, titel, vorname, nachname) 
-values (uuid(), now, Prof. Dr, Christop, Heinlein);
 ```
 
-#### 4. Erstelle Buchungen mit einer Referenz auf Hotel, den Gast und das Zimmer, sowie Übernachtungszeitraum
+#### 4. Erstelle Buchungen mit einer Referenz auf Hotel, den Gast und das Zimmer, sowie Übernachtungszeitraum.
 
 ```sql
 create table bookings ( 
     hotel text, 
     room int, 
-    guest uuid, 
     f timestamp, 
     t timestamp, 
-    primary key ((hotel, room), guest, f, t) 
-);
+    guest uuid, 
+    primary key ((hotel, room), f, t, guest) 
+) with clustering oder by (f asc, t asc, guest desc);
+
+BEGIN BATCH
+insert into bookings (hotel, room, guest, f, t) values ('ibis Styles Aalen', 1, 7745a39f-efda-4737-bceb-6e40e63e2d57, '2021-05-14', '2021-05-15');
+insert into bookings (hotel, room, guest, f, t) values ('ibis Styles Aalen', 4, e12df9dc-9deb-404c-a5e1-f81526f41c54, '2021-06-01', '2021-07-01');
+APPLY BATCH;
+```
+
+Mit `SELECT * FROM system_schema.columns WHERE keyspace_name = 'ex2'`
+lassen sich alle erstellten Columns, mit der dazugehörigen Tabelle (Column Family) anzeigen.
+
+#### 5. Queries
+
+Finde alle Hotelzimmer des ibis Styles Aalen, für die für den heutigen 
+Tag gebucht sind.
+
+```
+select room from bookings where hotel = 'ibis Styles Aalen' and f = toTimeStamp(toDate(now())) allow filtering;
 ```
