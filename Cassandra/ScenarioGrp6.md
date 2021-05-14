@@ -75,12 +75,12 @@ CREATE TABLE guests (
 );
 
 insert into 
-guests (uuid, joined, vorname, nachname, geburtstag) 
-values (uuid(), now(), Moritz, Berger, '1998-07-24');
+guests (userid, joined, vorname, nachname, geburtstag) 
+values (uuid(), now(), 'Moritz', 'Berger', '1998-07-24');
 
 insert into 
-guests (uuid, joined, titel, vorname, nachname) 
-values (uuid(), now, Prof. Dr, Christop, Heinlein);
+guests (userid, joined, titel, vorname, nachname) 
+values (uuid(), now(), 'Prof. Dr', 'Christop', 'Heinlein');
 ```
 
 #### 4. Erstelle Buchungen mit einer Referenz auf Hotel, den Gast und das Zimmer, sowie Übernachtungszeitraum
