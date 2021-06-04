@@ -34,15 +34,12 @@ Als nächstes muss die Hotel Column Family angelegt und einige Einträge
 hinzugefügt werden.
 ```sql
 create table hotels (
-    name text,
     city text,
+    name text,
     stars int,
-    primary key (name, city)
+    primary key (city, name, stars)
 );
 
-insert into hotels (name, city, stars) values ('ibis Styles Aalen', 'Aalen', 3);
-insert into hotels (name, city, stars) values ('ibis Stuttgart City', 'Stuttgart', 4);
-insert into hotels (name, city, stars) values ('ibis Budget Stuttgart City Nord', 'Stuttgart', 4);
 ```
 
 #### 2. Erstelle Zimmer mit Preis, zugehörigem Hotel und ob es belegt ist
@@ -50,19 +47,14 @@ insert into hotels (name, city, stars) values ('ibis Budget Stuttgart City Nord'
 ```sql
 create table rooms (
 	nr int,
-    hotel, text,
+    hotel text,
 	beds int,
 	price float,
 	available boolean,
 	features set<text>,
-	primary key (nr, hotel, beds, price)
+	primary key (hotel, beds, price)
 );
 
-insert into rooms (nr, hotel, beds, price, available, features) values (1, 'ibis Styles Aalen', 1, 100.00, true, {'Vergolteter Toilettensitz', 'Klimaanlage'});
-insert into rooms (nr, hotel, beds, price, available, features) values (2, 'ibis Styles Aalen', 1, 49.99, true, {'Klimaanlage'});
-insert into rooms (nr, hotel, beds, price, available, features) values (3, 'ibis Styles Aalen', 1, 49.99, true, {'Klimaanlage'});
-insert into rooms (nr, hotel, beds, price, available, features) values (4, 'ibis Styles Aalen', 2, 88.97, true, {'Klimaanlage'});
-	
 ```
 
 #### 3. Erstelle Gäste mit Name und Anschrift
@@ -78,26 +70,67 @@ CREATE TABLE guests (
 	PRIMARY KEY (userid, joined)	
 );
 
-insert into guests (userid, joined, vorname, nachname, geburtstag) values (uuid(), now(), 'Moritz', 'Berger', '1998-07-24');
-insert into guests (userid, joined, title, vorname, nachname) values (uuid(), now(), 'Prof. Dr.', 'Christian', 'Heinlein');
+create index lname on guests(nachname);
 
 ```
 
 #### 4. Erstelle Buchungen mit einer Referenz auf Hotel, den Gast und das Zimmer, sowie Übernachtungszeitraum.
 
 ```sql
-create table bookings ( 
+create table bookings (
     hotel text, 
-    room int, 
     f timestamp, 
     t timestamp, 
+    room int, 
     guest uuid, 
-    primary key ((hotel, room), f, t, guest) 
-) with clustering oder by (f asc, t asc, guest desc);
+    primary key (hotel, f, t) 
+);
 
+create index guest on bookings(guest);
+
+```
+
+```
 BEGIN BATCH
-insert into bookings (hotel, room, guest, f, t) values ('ibis Styles Aalen', 1, 7745a39f-efda-4737-bceb-6e40e63e2d57, '2021-05-14', '2021-05-15');
-insert into bookings (hotel, room, guest, f, t) values ('ibis Styles Aalen', 4, e12df9dc-9deb-404c-a5e1-f81526f41c54, '2021-06-01', '2021-07-01');
+insert into hotels (name, city, stars) 
+values ('ibis Styles Aalen', 'Aalen', 3);
+insert into hotels (name, city, stars) 
+values ('ibis Stuttgart City', 'Stuttgart', 4);
+insert into hotels (name, city, stars) 
+values ('ibis Budget Stuttgart City Nord', 'Stuttgart', 4);
+
+insert into rooms (nr, hotel, beds, price, available, features) 
+values (1, 'ibis Styles Aalen', 1, 100.00, true, {'Vergolteter Toilettensitz', 'Klimaanlage'});
+insert into rooms (nr, hotel, beds, price, available, features) 
+values (2, 'ibis Styles Aalen', 1, 49.99, true, {'Klimaanlage'});
+insert into rooms (nr, hotel, beds, price, available, features) 
+values (3, 'ibis Styles Aalen', 1, 49.99, true, {'Klimaanlage'});
+insert into rooms (nr, hotel, beds, price, available, features) 
+values (4, 'ibis Styles Aalen', 2, 88.97, true, {'Klimaanlage'});
+insert into rooms (nr, hotel, beds, price, available, features) 
+values (1, 'ibis Stuttgart City', 1, 37.97, true, {});
+insert into rooms (nr, hotel, beds, price, available, features) 
+values (2, 'ibis Stuttgart City', 2, 75.94, true, {'Meerblick'});
+insert into rooms (nr, hotel, beds, price, available, features) 
+values (1, 'ibis Budget Stuttgart City Nord', 1, 12.94, true, {});
+
+insert into guests (userid, joined, vorname, nachname, geburtstag) 
+values (uuid(), now(), 'Moritz', 'Berger', '1998-07-24');
+insert into guests (userid, joined, title, vorname, nachname) 
+values (uuid(), now(), 'Prof. Dr.', 'Christian', 'Heinlein');
+insert into guests (userid, joined, vorname, nachname) 
+values (uuid(), now(), 'David', 'Sugar');
+
+insert into bookings (hotel, room, guest, f, t) 
+values ('ibis Styles Aalen', 1, 7745a39f-efda-4737-bceb-6e40e63e2d57, '2021-05-14', '2021-05-15');
+insert into bookings (hotel, room, guest, f, t) 
+values ('ibis Styles Aalen', 4, e12df9dc-9deb-404c-a5e1-f81526f41c54, '2021-06-01', '2021-07-01');
+insert into bookings (hotel, room, guest, f, t) 
+values ('ibis Styles Aalen', 4, e12df9dc-9deb-404c-a5e1-f81526f41c54, '2021-12-31', '2022-01-01');
+insert into bookings (hotel, room, guest, f, t) 
+values ('ibis Stuttgart City', 1, 7745a39f-efda-4737-bceb-6e40e63e2d57, '2021-07-14', '2021-07-17');
+insert into bookings (hotel, room, guest, f, t) 
+values ('ibis Stuttgart City', 2, d5d37d20-c383-422b-ab78-a506356c75a5 , '2021-06-03', '2021-06-05');
 APPLY BATCH;
 ```
 
@@ -106,9 +139,40 @@ lassen sich alle erstellten Columns, mit der dazugehörigen Tabelle (Column Fami
 
 #### 5. Queries
 
-Finde alle Hotelzimmer des ibis Styles Aalen, für die für den heutigen 
-Tag gebucht sind.
+1. Finde alle Hotelzimmer des ibis Styles Aalen, für die Gäste am heutigen
+Tag (14.05.2021) anreisen, damit diese gereinigt werden können.
 
 ```
-select room from bookings where hotel = 'ibis Styles Aalen' and f = toTimeStamp(toDate(now())) allow filtering;
+select room from bookings where hotel = 'ibis Styles Aalen' and f = toTimeStamp(toDate(now()));
 ```
+
+2. Lassen Sie sich alle Räume mit 2 Betten unter 100.00 Euro anzeigen.
+
+```
+select * from rooms where hotel = 'ibis Styles Aalen' and beds = 2 and price < 100.0;
+```
+
+3. Lassen Sie sich alle Hotels in Stuttgart anzeigen.
+
+```
+select name, stars from hotels where city = 'Stuttgart';
+```
+
+4. Listens Sie für alle Hotels die Gesammtzahl der Buchungen auf.
+
+```
+select hotel, count(\*) as bookings from bookings group by hotel;
+```
+
+5. Finde alle Buchungen des Gastes mit dem Nachnamen Sugar.
+
+```
+select userid from guests where nachname = 'Sugar';
+
+ userid
+--------------------------------------
+ d5d37d20-c383-422b-ab78-a506356c75a5
+
+select * from bookings where guest = d5d37d20-c383-422b-ab78-a506356c75a5;
+```
+
