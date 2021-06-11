@@ -64,7 +64,9 @@ CREATE
 (event2:Event {name: "Event 2", 
     location: "Stuttgart", 
     start: datetime('2021-06-13T14:15:00'), 
-    duration: duration({hours: 2, minutes: 15})})
+    duration: duration({hours: 2, minutes: 15})}),
+(event1)-[:FOR]->(pc), 
+(event2)-[:FOR]->(pc)
 ```
 
 ```
@@ -86,10 +88,10 @@ CREATE
     (event1)-[:ASSIGNED]->(ft),
     (sarah)-[:CONFIRMS]->(sa:Assignment)<-[:FOR]-(ersteStimme), 
     (event2)-[:ASSIGNED]->(sa),
-    (david)-[:CONFIRMS]->(fd:Assignment)<-[:FOR]-(zweiteStimme), 
-    (event2)-[:ASSIGNED]->(fd),
-    (tobias)-[:CONFIRMS]->(ft:Assignment)<-[:FOR]-(zweiteStimme), 
-    (event2)-[:ASSIGNED]->(ft)
+    (david)-[:CONFIRMS]->(fd2:Assignment)<-[:FOR]-(zweiteStimme), 
+    (event2)-[:ASSIGNED]->(fd2),
+    (tobias)-[:CONFIRMS]->(ft2:Assignment)<-[:FOR]-(zweiteStimme), 
+    (event2)-[:ASSIGNED]->(ft2)
 ```
 
 * Lassen Sie sich die Namen aller Mitglieder anzeigen, 
@@ -97,11 +99,26 @@ CREATE
   in der sie spielen.
 
 ```
-MATCH (members:Member)-[:CONFIRMS]->(a:Assignment)<-[ASSIGNED]-(:Event {name: "Event 1"}) 
+MATCH (members:Member)-[:CONFIRMS]->(a:Assignment)<-[:ASSIGNED]-(:Event {name: "Event 1"}) 
 MATCH (a)<-[:FOR]-(g:Group) 
 return members.name as Name, g.name as Group
 ```
 
 * Zählen Sie die Mitglieder eines der Teams.
 
+```
+return size((:Member)-[:MEMBER_OF]->(:Team {name: "Posaunenchor XYZ"})) as TeamSize
+```
 
+* Lassen Sie sich die Mitglieder Anzeigen, die den selben Gruppen wie
+dem Nutzer `David` zugewiesen sind.
+
+```
+match (:Member {name: "David"})-[:ASSIGNED_TO]->(:Group)<-[:ASSIGNED_TO]-(partners:Member) return partners
+```
+
+* Welche Entents stehen dem `Posaunenchor XYZ` noch bevor?
+
+```
+match (e:Event)-[:FOR]->(t) where e.start > datetime({epochmillis:timestamp()}) return e.name as Upcoming
+```
