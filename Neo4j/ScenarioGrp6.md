@@ -122,3 +122,10 @@ match (:Member {name: "David"})-[:ASSIGNED_TO]->(:Group)<-[:ASSIGNED_TO]-(partne
 ```
 match (e:Event)-[:FOR]->(t) where e.start > datetime({epochmillis:timestamp()}) return e.name as Upcoming
 ```
+
+* Welchen Events hat Tobias seine Teilnahmen zugesichert?
+
+```
+MATCH (:Member {name: "Tobias"})-[*..2]-(events:Event) 
+return events.name as TobisEvents
+```
